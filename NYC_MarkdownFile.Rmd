@@ -1,0 +1,128 @@
+---
+title: "NYC_MarkdownFile"
+author: "Elaine Franta"
+date: "1/15/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Read in NYC AirBnB Data
+
+```{r,echo=TRUE}
+rm(list = ls())
+library(plyr)
+library(dplyr)
+library(ggplot2)
+
+ABNB<-read.csv("AB_NYC_2019.csv")
+attach(ABNB)
+
+dim(ABNB)
+names(ABNB)
+head(ABNB)
+```
+
+##Check for missing values
+
+```{r,echo=TRUE}
+n_distinct(id) #48895 unique ids
+n_distinct(host_id) #37457 unique host ids 
+summary(ABNB) #shows 10052 NA values for reviews_per_month
+```
+
+
+##Cleaning
+
+```{r,echo=TRUE}
+null_val<-filter(ABNB, is.na(reviews_per_month) == TRUE)
+head(null_val) #null when number of reviews is 0
+
+null_lastreview<-filter(ABNB, last_review =='')
+head(null_lastreview)
+sum(last_review == '') #10052 empty values of last_review
+
+#When number of reviews is 0, last_review is empty and reviews_per_month is NA
+
+#replace NA values with 0 
+ABNB$reviews_per_month[is.na(reviews_per_month) == TRUE] = 0
+sum(is.na(reviews_per_month)) #Check that replacement worked
+
+#Make factors
+ABNB$neighbourhood_group<-factor(neighbourhood_group)
+ABNB$room_type <-factor(room_type)
+```
+
+##Data Analysis
+
+```{r,echo=TRUE}
+ggplot(data = ABNB)+ ggtitle("Number of Airbnb's per Neighborhood Group")+
+  geom_bar(mapping =  aes(x = neighbourhood_group),fill = "blue") 
+
+ggplot(data = ABNB) + ggtitle("Price per Airbnb in each Neighborhood Group")+
+  geom_point(mapping = aes(x = neighbourhood_group, y = price), color = "red") 
+
+ggplot(data = ABNB) + ggtitle("Price per Airbnb in each Neighborhood Group")+
+  geom_count(mapping = aes(x = neighbourhood_group, y = price), color = "red")
+
+ggplot(data = ABNB, aes(x = neighbourhood_group, fill = room_type))+geom_bar()+
+  ggtitle("Number of room types for each neighborhood group")+
+  scale_fill_manual(values = c("Entire home/apt" = "purple",
+                               "Private room" = "pink",
+                               "Shared room" = "orange"))
+
+ggplot(data = ABNB, aes(x = number_of_reviews, y = price)) + 
+  ggtitle("Number of Reviews vs Price of Airbnb")+ geom_point()
+
+ggplot(data = ABNB, aes(x = number_of_reviews, y = price)) + 
+  ggtitle("Number of Reviews vs Price of Airbnb")+
+  geom_point() + 
+  coord_cartesian(xlim = c(0,200))
+       
+ggplot(data = ABNB) + ggtitle("Minimum Number of Nights vs Price")+
+  geom_point(mapping =  aes(x = minimum_nights, y = price, color = neighbourhood_group))
+
+
+ggplot(data = ABNB, aes(x = neighbourhood_group, y =price, color = room_type)) + 
+  geom_point() + ggtitle("Price for Room Type in Neighborhood Groups")+
+  scale_color_manual(values = c("Entire home/apt" = "purple",
+                               "Private room" = "pink",
+                               "Shared room" = "orange"))
+
+ggplot(data = ABNB, aes(x = availability_365, y = price)) + 
+  ggtitle("Availability vs Price")+
+  geom_point(color = "red")
+
+#Using mean price
+NGanalysis <- ABNB %>%
+  group_by(neighbourhood_group) %>% summarise(Mean_Price = mean(price))
+
+ggplot(NGanalysis, aes(x = neighbourhood_group, y = Mean_Price)) + 
+  ggtitle("Mean Price for Neighborhood Groups")+
+  geom_col(fill = "pink", color = "black")
+
+#Examine room_type and mean prices for neighborhood groups
+rt_price<- ABNB %>%
+  group_by(neighbourhood_group, room_type) %>% summarise(MeanPrice = mean(price))
+
+ggplot(rt_price, aes(x = neighbourhood_group, y = MeanPrice, fill = room_type)) + 
+  geom_col() + ggtitle("Mean Price for different Room Types")+
+  scale_fill_manual(values = c("Entire home/apt" = "purple",
+                                "Private room" = "pink",
+                                "Shared room" = "orange"))
+
+#Most expensive neighborhoods
+Neighbour_analysis<- ABNB %>%
+  group_by(neighbourhood) %>% summarise(MeanP = mean(price))
+
+highest <- Neighbour_analysis[with(Neighbour_analysis, order(-MeanP)),]
+
+top<-highest[1:10,]
+
+ggplot(top, aes(y = neighbourhood, x = MeanP)) + 
+  ggtitle("Top 10 Most expensive Neighborhoods")+
+  geom_col(fill = "purple")
+
+```
